@@ -66,19 +66,83 @@ class Solver():
             False if ran out of moves
         '''
         done = False
+        iterations = -1
         while not done:
+            iterations += 1
+            print("Iteration:", iterations)
             done = True
             # basic play
+            column_available_colors = [[], [], [], [], [], [], [], [], []]
+            row_available_colors = [[], [], [], [], [], [], [], [], []]
             for row in range(0, self.graph.rows):
+                # look at each row
+                nodes = []
                 for column in range(0, self.graph.columns):
-                    neighbors = self.graph.get_node_colors(row, column)
-                    print(len(neighbors))
-                    if len(neighbors) == 1:
+                    available_colors = self.graph.get_node_colors(row, column)
+                    if (iterations == 6):
+                        print(available_colors, row,column)
+                    if len(available_colors) == 1:
                         done = False
-                        for color in neighbors:
-                            self.graph.set_node_color(row, column, color)
+                        print("-----------\nPLAYED-----------\n")
+                        color = available_colors.pop()
+                        # only one
+                        self.graph.set_node_color(row, column, color)
+                    row_available_colors[row].append(available_colors)
+                    column_available_colors[column].append(available_colors)
+            # now have a matrix of available colors
+            # check columns
+            print(done)
+            if done:
+                for column in range(0, len(column_available_colors)):
+                    row = 0
+                    while len(column_available_colors[column]) > 0:
+                        colors = column_available_colors[column].pop(0)
+                        rest = self.combine_list(column_available_colors[column])
+                        difference = self.a_not_in_b(colors, rest)
+                        if len(difference) == 1:
+                            done = False
+                            print("-----------\nPLAYED-----------\n")
+                            self.graph.set_node_color(row, column, difference[0])
+                        row += 1
+            if done:
+                #check rows
+                for row in range(0, len(row_available_colors)):
+                    column = 0
+                    while len(row_available_colors[row]) > 0:
+                        colors = row_available_colors[row].pop(0)
+                        rest = self.combine_list(row_available_colors[row])
+                        difference = self.a_not_in_b(colors, rest)
+                        if len(difference) == 1:
+                            print("-----------\nPLAYED-----------\n")
+                            done = False
+                            self.graph.set_node_color(row, column, difference[0])
+                        column += 1
         return
-                
+
+    def a_not_in_b(self,a, b):
+        result = []
+        for x in a:
+            if x not in b:
+                result.append(x)
+        return result
+
+    def combine_list(self, lists):
+        combo = []
+        for l in lists:
+            combo += l
+        return combo
+
+    def intersect(self, a, b):
+        return list(set(a) & set(b))
+
+    def add_colors(self, c1, c2):
+        c3 = {}
+        for key,value in c1.items():
+            c3[key] = value
+        for key, value in c2.items():
+            c3[key] = value
+        return c3
+
 import unittest
 import os
 class Test(unittest.TestCase):
@@ -114,4 +178,5 @@ class Test(unittest.TestCase):
         self.solver.load(self.test_file)
         self.solver.solve()
         result = self.solver.graph.to_list()
+        self.solver.graph.output()
         print(result)

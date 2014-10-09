@@ -114,7 +114,7 @@ class Graph():
             row: the row index (int)
             column: the column index (int)
         Returns:
-            available_colors: a dictionary of available colors (list)
+            result: a list of available colors (list)
         '''
         node_id = column + self.columns * row
         nodes = nx.get_node_attributes(self._graph, 'node')
@@ -131,7 +131,10 @@ class Graph():
                     del available_colors[color]
         else:
             available_colors = {}
-        return available_colors
+        result = []
+        for key, value in available_colors.items():
+            result.append(key)
+        return result
 
     def set_node_color(self, row, column, color):
         '''
@@ -164,7 +167,7 @@ class Graph():
         index = 0
         line_end = self.columns
         end = self.columns * self.rows
-        while line_end < end:
+        while line_end <= end:
             line = []
             while index < line_end:
                 color = nodes[index].get_color()
@@ -271,9 +274,7 @@ class GraphTest(unittest.TestCase):
 
     def testGetNodeColors(self):
         self.g = Graph(9)
-        expect = { 0: 'available', 1: 'available', 2: 'available',
-                   3: 'available', 4: 'available', 5: 'available',
-                   6: 'available', 7: 'available', 8: 'available'}
+        expect =  [0, 1, 2, 3, 4,  5, 6, 7, 8]
         available = self.g.get_node_colors(0, 1)
         self.assertEqual(expect, available)
         
@@ -281,9 +282,7 @@ class GraphTest(unittest.TestCase):
         nodes = nx.get_node_attributes(self.g._graph,'node')
         nodes[0].set_color(0)
         available = self.g.get_node_colors(0, 1)
-        expect =  {1: 'available', 2: 'available', 3:'available',
-                   4: 'available', 5: 'available', 6: 'available',
-                   7: 'available', 8: 'available'}
+        expect =  [1, 2, 3, 4,  5, 6, 7, 8]
         self.assertEqual(expect, available)
 
     def testSetNodeColors(self):
