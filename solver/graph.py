@@ -152,6 +152,54 @@ class Graph():
             raise Exception("Set a Node Color which already set")
         nodes[node_id].set_color(color)
 
+    def output(self):
+        '''
+        outputs the graph to the console
+        Parameters:
+            None
+        Returns:
+            None
+        '''
+        nodes = nx.get_node_attributes(self._graph, 'node')
+        index = 0
+        line_end = self.columns
+        end = self.columns * self.rows
+        while line_end < end:
+            line = []
+            while index < line_end:
+                color = nodes[index].get_color()
+                if color is not None:
+                    line.append(str(color))
+                else:
+                    line.append(" ")
+                index += 1
+            print(", ".join(line))
+            line_end += self.columns
+
+    def to_list(self):
+        '''
+        converts the nodes to a list of colors
+        Parameters:
+            None
+        Returns:
+            square matrix of the sudoku board with the colored nodes
+        '''
+        result = []
+        nodes = nx.get_node_attributes(self._graph, 'node')
+        row = 0
+        while row < self.rows:
+            result.append([])
+            index = row* self.rows
+            while index < self.columns * (row+1):
+                color = nodes[index].get_color()
+                if color is not None:
+                    result[row].append(color)
+                else:
+                    result[row].append(" ")
+                index += 1
+            row += 1
+        return result
+
 class Node():
     '''
     Node
@@ -182,7 +230,6 @@ class Node():
         Raises:
             Exception: if color is not an int
         '''
-        print(type(color))
         if type(color) is int:
             self._color = color
         else:
