@@ -106,36 +106,6 @@ class Graph():
         for x in range(0, row):
             self._graph.add_edge(node_id, column + x * self.columns)
 
-    def get_node_colors(self, row, column):
-        '''
-        a method that gets all the available colors for the Node at
-        index (row, column)
-        Parameters:
-            row: the row index (int)
-            column: the column index (int)
-        Returns:
-            result: a list of available colors (list)
-        '''
-        node_id = column + self.columns * row
-        nodes = nx.get_node_attributes(self._graph, 'node')
-        color = nodes[node_id].get_color()
-        available_colors = {}
-        if color is None:
-            # initial all colors are available
-            for x in range(0, self.columns):
-                available_colors[x] = "available"
-            # check each neighbor
-            for neighbor in self._graph.neighbors(node_id):
-                color = nodes[neighbor].get_color() 
-                if color is not None and color in available_colors:
-                    del available_colors[color]
-        else:
-            available_colors = {}
-        result = []
-        for key, value in available_colors.items():
-            result.append(key)
-        return result
-
     def set_node_color(self, row, column, color):
         '''
         a method that sets the Node color
@@ -154,6 +124,22 @@ class Graph():
         if check is not None:
             raise Exception("Set a Node Color which already set")
         nodes[node_id].set_color(color)
+        # remove that color from his neighbor color palette 
+        for neighbor in self._graph.neighbors(node_id):
+            nodes[neighbor].remove_available_color(color)
+
+    def get_available_colors(self, row, column):
+        '''
+        a method that finds all the available colors for one node
+        Parameters:
+            row: the row index (int)
+            column: the column index (int)
+        Returns:
+            : list of available colors (list)
+        '''
+        node_id = column + self.columns * row
+        nodes = nx.get_node_attributes(self._graph, 'node')
+        return nodes[node_id].get_available_colors()
 
     def output(self):
         '''
@@ -208,10 +194,11 @@ class Node():
     Node
         the nodes that make up a Graph
     '''
-    def __init__(self, row, column, color=None):
+    def __init__(self, row, column, size=9, color=None):
         self._column = column
         self._row = row
         self._color = color
+        self._available_colors = [x for x in range(size)]
 
     def get_index(self):
         '''
@@ -235,6 +222,7 @@ class Node():
         '''
         if type(color) is int:
             self._color = color
+            self._available_colors = []
         else:
             raise Exception("Node given non-int color")
 
@@ -247,6 +235,29 @@ class Node():
             : color of the Node (int)
         '''
         return self._color
+
+    def get_available_colors(self):
+        '''
+        a method that gets all the available colors for that node
+        Parameters:
+            none
+        Returns:
+            : list of available colors
+        '''
+        return self._available_colors
+
+    def remove_available_color(self, color):
+        '''
+        a method that removes one color from the available color list
+        Parameters:
+            color: the int value of the color to remove
+        Returns:
+            none
+        '''
+        for value, index in enumerate(self._available_colors):
+            if value ==  color:
+                self._available_colors.pop(index)
+        return
 
 import unittest
 
@@ -275,13 +286,13 @@ class GraphTest(unittest.TestCase):
     def testGetNodeColors(self):
         self.g = Graph(9)
         expect =  [0, 1, 2, 3, 4,  5, 6, 7, 8]
-        available = self.g.get_node_colors(0, 1)
+        available = self.g.get_available_colors(0, 1)
         self.assertEqual(expect, available)
         
         # set one color
         nodes = nx.get_node_attributes(self.g._graph,'node')
-        nodes[0].set_color(0)
-        available = self.g.get_node_colors(0, 1)
+        self.g.set_node_color(0, 0, 0)
+        available = self.g.get_available_colors(0, 1)
         expect =  [1, 2, 3, 4,  5, 6, 7, 8]
         self.assertEqual(expect, available)
 
@@ -291,6 +302,11 @@ class GraphTest(unittest.TestCase):
         nodes = nx.get_node_attributes(self.g._graph, 'node')
         result = nodes[0].get_color()
         self.assertEqual(result, color)
+        # check neighbors color were updated
+        for neighbor in self.g._graph.neighbors(0):
+            self.assertEqual(color in nodes[neighbor].get_available_colors(),
+                             False)
+            
         try:
             self.g.set_node_color(0, 0, color)
             self.assertEqual(True, False,
@@ -305,7 +321,7 @@ class GraphTest(unittest.TestCase):
 class NodeTest(unittest.TestCase):
 
     def setUp(self):
-        self.row = 1
+        self.row = 2
         self.column = 2
         self.node = Node(self.row, self.column)
 
@@ -330,6 +346,19 @@ class NodeTest(unittest.TestCase):
                              "Set Color: Failed to raise exception")
         except:
             pass
+
+    def testGetRemoveAvailableColors(self):
+        available = self.node.get_available_colors()
+        expect = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        self.assertEqual(available, expect)
+        self.node.remove_available_color(1)
+        available = self.node.get_available_colors()
+        expect = [0]
+        self.node.set_color(0)
+        available = self.node.get_available_colors()
+        expect = []
+        self.assertEqual(available, expect)
+
 if __name__ == "__main__":
     #import sys;sys.argv = ['', 'Test.testName']
     unittest.main()
