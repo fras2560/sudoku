@@ -207,6 +207,23 @@ class Graph():
                     available.append(color)
         return available 
 
+    def get_column_colors(self, row, column):
+        '''
+        a method that gets all the rows available except for the node given
+        Parameters:
+            row: the row index
+            column: the node index
+        Returns:
+            list: of avilable colors for that row
+        '''
+        node_id = column + self.columns * row
+        available = []
+        nodes = nx.get_node_attributes(self._graph, 'node')
+        for r in filter(lambda x: x != column, range(0, self.rows)):
+            for color in nodes[column + self.columns * r].get_available_colors():
+                if color not in available:
+                    available.append(color)
+        return available
 
 class Node():
     '''
@@ -345,7 +362,16 @@ class GraphTest(unittest.TestCase):
         result = self.g.get_row_colors(0, 0)
         expect = [1, 2, 3, 4, 5, 6, 7, 8]
         self.assertEqual(result, expect)
-        
+
+    def testGetColumnColors(self):
+        result = self.g.get_column_colors(0, 0)
+        expect = [0, 1, 2, 3, 4, 5, 6, 7, 8]
+        self.assertEqual(result, expect)
+        self.g.set_node_color(1, 0, 0)
+        result = self.g.get_column_colors(0, 0)
+        expect = [1, 2, 3, 4, 5, 6, 7, 8]
+        self.assertEqual(result, expect)
+
 class NodeTest(unittest.TestCase):
 
     def setUp(self):
