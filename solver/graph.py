@@ -225,6 +225,9 @@ class Graph():
                     available.append(color)
         return available
 
+    def get_nodes(self):
+        return self._graph.nodes()
+
 class Node():
     '''
     Node
@@ -290,9 +293,14 @@ class Node():
         Returns:
             none
         '''
-        for value, index in enumerate(self._available_colors):
-            if value ==  color:
+        index = len(self._available_colors)
+        done = False
+        while index > 0 and not done:
+            index -= 1
+            if self._available_colors[index] == color:
                 self._available_colors.pop(index)
+                done = True
+
         return
 
 import unittest

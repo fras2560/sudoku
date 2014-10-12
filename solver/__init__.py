@@ -14,6 +14,7 @@ from solver.graph import Graph
 class Solver():
     def __init__(self):
         self.graph = Graph(9)
+        self.n = 9
 
     def load(self, file):
         '''
@@ -71,77 +72,49 @@ class Solver():
             iterations += 1
             print("Iteration:", iterations)
             done = True
-            # basic play
-            column_available_colors = [[], [], [], [], [], [], [], [], []]
-            row_available_colors = [[], [], [], [], [], [], [], [], []]
-            for row in range(0, self.graph.rows):
-                # look at each row
-                nodes = []
-                for column in range(0, self.graph.columns):
-                    available_colors = self.graph.get_node_colors(row, column)
-                    if (iterations == 6):
-                        print(available_colors, row,column)
-                    if len(available_colors) == 1:
+            # look at each node
+            for row in range(0, self.n):
+                for column in range(0, self.n):
+                    color_palette = self.graph.get_available_colors(row, column)
+                    if len(color_palette) == 1:
+                        self.graph.set_node_color(row, column, color_palette[0])
+                        print("OBVSIOUS MOVE HIT:",row,column)
                         done = False
-                        print("-----------\nPLAYED-----------\n")
-                        color = available_colors.pop()
-                        # only one
-                        self.graph.set_node_color(row, column, color)
-                    row_available_colors[row].append(available_colors)
-                    column_available_colors[column].append(available_colors)
-            # now have a matrix of available colors
-            # check columns
-            print(done)
-            if done:
-                for column in range(0, len(column_available_colors)):
-                    row = 0
-                    while len(column_available_colors[column]) > 0:
-                        colors = column_available_colors[column].pop(0)
-                        rest = self.combine_list(column_available_colors[column])
-                        difference = self.a_not_in_b(colors, rest)
-                        if len(difference) == 1:
+                    else:
+                        column_colors = self.graph.get_column_colors(row,
+                                                                     column)
+                        exempt = self.a_not_in_b(color_palette, column_colors)
+                        if iterations == 3:
+                            print("(%d,%d)"%(row,column),color_palette, column_colors)
+                        if len(exempt) == 1:
+                            self.graph.set_node_color(row, column, exempt[0])
+                            print("COLUMN HIT:",row,column)
                             done = False
-                            print("-----------\nPLAYED-----------\n")
-                            self.graph.set_node_color(row, column, difference[0])
-                        row += 1
-            if done:
-                #check rows
-                for row in range(0, len(row_available_colors)):
-                    column = 0
-                    while len(row_available_colors[row]) > 0:
-                        colors = row_available_colors[row].pop(0)
-                        rest = self.combine_list(row_available_colors[row])
-                        difference = self.a_not_in_b(colors, rest)
-                        if len(difference) == 1:
-                            print("-----------\nPLAYED-----------\n")
-                            done = False
-                            self.graph.set_node_color(row, column, difference[0])
-                        column += 1
+                        else:
+                            row_colors = self.graph.get_row_colors(row,
+                                                                     column)
+                            exempt = self.a_not_in_b(color_palette, row_colors)
+                            if len(exempt) == 1:
+                                self.graph.set_node_color(row, column,
+                                                          exempt[0])
+                                print("ROW HIT:",row,column)
+                                done = False
         return
 
-    def a_not_in_b(self,a, b):
+    def a_not_in_b(self, a, b):
+        '''
+        a method that check fors any elements from a not in b
+        Parameters:
+            a: a list of elements (list)
+            b: a list of element (list)
+        Returns:
+            result: the elements from a not in b (list)
+        '''
         result = []
         for x in a:
             if x not in b:
                 result.append(x)
         return result
-
-    def combine_list(self, lists):
-        combo = []
-        for l in lists:
-            combo += l
-        return combo
-
-    def intersect(self, a, b):
-        return list(set(a) & set(b))
-
-    def add_colors(self, c1, c2):
-        c3 = {}
-        for key,value in c1.items():
-            c3[key] = value
-        for key, value in c2.items():
-            c3[key] = value
-        return c3
 
 import unittest
 import os
@@ -174,9 +147,24 @@ class Test(unittest.TestCase):
                   [9, 4, ' ', ' ', 2, ' ', 3, ' ', 5]]
         self.assertEqual(expect, result)
 
+    def testLoadColors(self):
+        self.solver.load(self.test_file)
+        r = self.solver.graph.get_available_colors(1, 0)
+        expect = [0, 1]
+        self.assertEqual(expect, r)
+
     def testSolve(self):
         self.solver.load(self.test_file)
         self.solver.solve()
         result = self.solver.graph.to_list()
         self.solver.graph.output()
-        print(result)
+        expect = [[3, 2, 6, 1, 7, 4, 5, 8, 0],
+                  [0, 8, 4, 6, 5, 2, 1, 3, 7],
+                  [7, 5, 1, 3, 0, 8, 4, 2, 6],
+                  [5, 0, 8, 7, 3, 1, 6, 4, 2],
+                  [6, 4, 2, 0, 8, 5, 7, 1, 3],
+                  [1, 7, 3, 4, 2, 6, 0, 5, 8],
+                  [2, 6, 5, 8, 4, 0, 3, 7, 1],
+                  [4, 1, 7, 2, 6, 3, 8, 0, 5],
+                  [8, 3, 0, 5, 1, 7, 2, 6, 4]]
+        self.assertEqual(result, expect)
