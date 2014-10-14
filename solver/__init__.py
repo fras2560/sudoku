@@ -78,17 +78,20 @@ class Solver():
                     color_palette = self.graph.get_available_colors(row, column)
                     if len(color_palette) == 1:
                         self.graph.set_node_color(row, column, color_palette[0])
-                        print("OBVSIOUS MOVE HIT:",row,column)
+                        print("OBVSIOUS MOVE HIT: (%d,%d) with %d"
+                              %(row, column, color_palette[0]))
                         done = False
                     else:
                         column_colors = self.graph.get_column_colors(row,
                                                                      column)
                         exempt = self.a_not_in_b(color_palette, column_colors)
                         if iterations == 3:
-                            print("(%d,%d)"%(row,column),color_palette, column_colors)
+                            print("(%d,%d)"%(row,column),color_palette,
+                                  column_colors)
                         if len(exempt) == 1:
                             self.graph.set_node_color(row, column, exempt[0])
-                            print("COLUMN HIT:",row,column)
+                            print("COLUMN HIT: (%d,%d) with %d"
+                              %(row, column, str(exempt[0])))
                             done = False
                         else:
                             row_colors = self.graph.get_row_colors(row,
@@ -97,8 +100,10 @@ class Solver():
                             if len(exempt) == 1:
                                 self.graph.set_node_color(row, column,
                                                           exempt[0])
-                                print("ROW HIT:",row,column)
+                                print("ROW HIT: (%d,%d) with %d"
+                                      %(row, column, exempt[0]))
                                 done = False
+                    print("(%d,%d) Available:"%(row, column) , color_palette)
         return
 
     def a_not_in_b(self, a, b):
@@ -122,7 +127,11 @@ class Test(unittest.TestCase):
     def setUp(self):
         self.solver = Solver()
         self.test_directory = os.path.dirname(os.getcwd())
-        self.test_file = os.path.join(self.test_directory, "tests", 'test.txt')
+        self.test_files = []
+        self.test_files.append(os.path.join(self.test_directory,
+                                            "tests", 'test.txt'))
+        self.test_files.append(os.path.join(self.test_directory,
+                                            "tests", 'test2.txt'))
 
     def tearDown(self):
         pass
@@ -154,7 +163,7 @@ class Test(unittest.TestCase):
         self.assertEqual(expect, r)
 
     def testSolve(self):
-        self.solver.load(self.test_file)
+        self.solver.load(self.test_files[0])
         self.solver.solve()
         result = self.solver.graph.to_list()
         self.solver.graph.output()
@@ -168,3 +177,10 @@ class Test(unittest.TestCase):
                   [4, 1, 7, 2, 6, 3, 8, 0, 5],
                   [8, 3, 0, 5, 1, 7, 2, 6, 4]]
         self.assertEqual(result, expect)
+
+    def testSolve2(self):
+        self.solver.load(self.test_files[1])
+        self.solver.solve()
+        result = self.solver.graph.to_list()
+        self.solver.graph.output()
+        print(result)
