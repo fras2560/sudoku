@@ -70,57 +70,19 @@ class Solver():
         iterations = -1
         while not done:
             iterations += 1
+            if iterations > 10:
+                break
             print("Iteration:", iterations)
+            self.graph.output()
             done = True
             # look at each node
             for row in range(0, self.n):
                 for column in range(0, self.n):
-                    color_palette = self.graph.get_available_colors(row, column)
-                    if len(color_palette) == 1:
-                        self.graph.set_node_color(row, column, color_palette[0])
-                        print("OBVSIOUS MOVE HIT: (%d,%d) with %d"
-                              %(row, column, color_palette[0]))
+                    move = self.graph.make_move(row, column)
+                    if move:
                         done = False
-                    if done:
-                        column_colors = self.graph.get_column_colors(row,
-                                                                     column)
-                        exempt = self.a_not_in_b(color_palette, column_colors)
-                        if iterations == 3:
-                            print("(%d,%d)"%(row,column),color_palette,
-                                  column_colors)
-                        if len(exempt) == 1:
-                            self.graph.set_node_color(row, column, exempt[0])
-                            print("COLUMN HIT: (%d,%d) with %d"
-                              %(row, column, str(exempt[0])))
-                            done = False
-                    if done:
-                        row_colors = self.graph.get_row_colors(row,
-                                                                 column)
-                        exempt = self.a_not_in_b(color_palette, row_colors)
-                        if len(exempt) == 1:
-                            self.graph.set_node_color(row, column,
-                                                      exempt[0])
-                            print("ROW HIT: (%d,%d) with %d"
-                                  %(row, column, exempt[0]))
-                            done = False
-                    if done:
-                        naked_partner = self.graph.remove_naked_pair(row, column)
         return
 
-    def a_not_in_b(self, a, b):
-        '''
-        a method that check fors any elements from a not in b
-        Parameters:
-            a: a list of elements (list)
-            b: a list of element (list)
-        Returns:
-            result: the elements from a not in b (list)
-        '''
-        result = []
-        for x in a:
-            if x not in b:
-                result.append(x)
-        return result
 
 import unittest
 import os
