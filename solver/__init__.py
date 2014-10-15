@@ -81,7 +81,7 @@ class Solver():
                         print("OBVSIOUS MOVE HIT: (%d,%d) with %d"
                               %(row, column, color_palette[0]))
                         done = False
-                    else:
+                    if done:
                         column_colors = self.graph.get_column_colors(row,
                                                                      column)
                         exempt = self.a_not_in_b(color_palette, column_colors)
@@ -93,17 +93,18 @@ class Solver():
                             print("COLUMN HIT: (%d,%d) with %d"
                               %(row, column, str(exempt[0])))
                             done = False
-                        else:
-                            row_colors = self.graph.get_row_colors(row,
-                                                                     column)
-                            exempt = self.a_not_in_b(color_palette, row_colors)
-                            if len(exempt) == 1:
-                                self.graph.set_node_color(row, column,
-                                                          exempt[0])
-                                print("ROW HIT: (%d,%d) with %d"
-                                      %(row, column, exempt[0]))
-                                done = False
-                    print("(%d,%d) Available:"%(row, column) , color_palette)
+                    if done:
+                        row_colors = self.graph.get_row_colors(row,
+                                                                 column)
+                        exempt = self.a_not_in_b(color_palette, row_colors)
+                        if len(exempt) == 1:
+                            self.graph.set_node_color(row, column,
+                                                      exempt[0])
+                            print("ROW HIT: (%d,%d) with %d"
+                                  %(row, column, exempt[0]))
+                            done = False
+                    if done:
+                        naked_partner = self.graph.remove_naked_pair(row, column)
         return
 
     def a_not_in_b(self, a, b):

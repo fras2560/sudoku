@@ -228,6 +228,51 @@ class Graph():
     def get_nodes(self):
         return self._graph.nodes()
 
+    def remove_naked_pair(self, row, column):
+        node_id = column + self.columns * row
+        nodes = nx.get_node_attributes(self._graph, 'node')
+        palette = nodes[node_id].get_available_colors()
+        naked_pair = None
+        if len(palette) == 2:
+            for neighbor in self._graph.neighbors(node_id):
+                if nodes[neighbor].get_available_colors() == palette:
+                    naked_pair = neighbor
+                    break
+        if naked_pair is not None:
+            print(naked_pair)
+            n_column = naked_pair % self.columns
+            n_row = (naked_pair - n_column) / self.columns
+            c1 = palette[1]
+            c2 = palette[0]
+            if n_row == row:
+                # share row
+                print("Row Naked Pair")
+                for c in (0, self.columns):
+                    n_id = n_row * self.columns + c
+                    nodes[n_id].remove_available_color(c1)
+                    nodes[n_id].remove_available_color(c2)
+            elif n_column == column:
+                # share square
+                print("Column Naked Pair", palette[1])
+                for r in range(0, self.rows):
+                    n_id = r * self.columns + column
+                    print(n_id)
+                    n = nodes[n_id]
+                    n.remove_available_color(c1)
+                    n.remove_available_color(c2)
+                    
+            else:
+                # share square
+                print("Square Naked Pair")
+                row = row - (row % 3)
+                column = column - (column % 3)
+                square = self.assemble_square(row, column)
+                for node in square:
+                    nodes[node].remove_available_color(c1)
+                    nodes[node].remove_available_color(c2)
+        return naked_pair
+
+
 class Node():
     '''
     Node
@@ -380,6 +425,17 @@ class GraphTest(unittest.TestCase):
         expect = [1, 2, 3, 4, 5, 6, 7, 8]
         self.assertEqual(result, expect)
 
+    def testRemoveNakePair(self):
+        self.g = Graph(9)
+        colors = [2,3,4,5,6,7,8]
+        column = 0
+        index = 0
+        for row in range(2, self.g.rows):
+            self.g.set_node_color(row, column, colors[index])
+            index += 1
+        result = self.g.remove_naked_pair(0, 0)
+        print(result)
+        
 class NodeTest(unittest.TestCase):
 
     def setUp(self):
