@@ -47,6 +47,7 @@ class Graph():
                 for column in range(0, 9, 3):
                     node_list = self.assemble_square(row, column)
                     self.connect_node_list(node_list)
+        self.logging = False
 
     def assemble_square(self, row, column):
         '''
@@ -191,12 +192,12 @@ class Graph():
 
     def get_row_colors(self, row ,column):
         '''
-        a method that gets all the rows available except for the node given
+        a method that gets all the row's available except for the node given
         Parameters:
             row: the row index
             column: the node index
         Returns:
-            list: of avilable colors for that row
+            list: of avialble colors for that row
         '''
         node_id = column + self.columns * row
         available = []
@@ -209,12 +210,12 @@ class Graph():
 
     def get_column_colors(self, row, column):
         '''
-        a method that gets all the rows available except for the node given
+        a method that gets all the column's available except for the node given
         Parameters:
             row: the row index
             column: the node index
         Returns:
-            list: of avilable colors for that row
+            list: of avialble colors for that column
         '''
         node_id = column + self.columns * row
         available = []
@@ -303,16 +304,14 @@ class Graph():
             n_palette = nodes[neighbor].get_available_colors()
             if n_palette == palette:
                 naked_pair = neighbor
-                break
             else:
                 n_column = neighbor % self.columns
                 n_row = int((neighbor - column) / self.columns)
-                print(neighbor, n_palette)
                 if column == n_column:
                     column_colors += n_palette
                 elif row == n_row:
                     row_colors += n_palette
-                if self.same_square(n_column,column, n_row, row):
+                if self.same_square(n_column, column, n_row, row):
                     # must be in same square
                     square += n_palette
         if naked_pair is not None:
@@ -325,50 +324,46 @@ class Graph():
             pair = [naked_pair, node_id]
             if n_row == row:
                 # share row
-                print("Row Naked Pair:", pair, "Colors:", palette)
                 for c in (0, self.columns):
                     n_id = n_row * self.columns + c
                     if n_id not in pair:
-                        print("Node:", n_id)
                         nodes[n_id].remove_available_color(c1)
                         nodes[n_id].remove_available_color(c2)
             elif n_column == column:
                 # share square
-                print("Column Naked Pair:", pair,  "Colors:", palette)
                 for r in range(0, self.rows):
                     n_id = r * self.columns + column
                     if n_id not in pair:
-                        print("Node:", n_id)
                         n = nodes[n_id]
                         n.remove_available_color(c1)
                         n.remove_available_color(c2)
                     
             else:
                 # share square
-                print("Square Naked Pair:" , pair, "Colors:", palette)
-                row = row - (row % 3)
-                column = column - (column % 3)
                 square = self.assemble_square(row, column)
                 for node in square:
                     if node not in pair:
-                        print("Node:", node)
                         nodes[node].remove_available_color(c1)
                         nodes[node].remove_available_color(c2)
         expect = self.a_not_in_b(palette, row_colors)
-        print(node_id, ": Row Colors", row_colors,
-              " column colors:", column_colors, ' square_colors:', square)
-        print(expect)
+        
+        self.log("Node ID: %d " %node_id)
+        self.log(palette)
+        
         if len(expect) == 1:
+            self.log("Row Move:(%d,%d)" %(row,column))
             self.set_node_color(row, column, expect[0])
             move = True
         else:
             expect = self.a_not_in_b(palette, column_colors)
             if len(expect) == 1:
+                self.log("Column Move:(%d,%d)" %(row,column))
                 self.set_node_color(row, column, expect[0])
                 move = True
             else:
                 expect = self.a_not_in_b(palette, square)
                 if len(expect) == 1:
+                    self.log("Square Move:(%d,%d)" %(row,column))
                     self.set_node_color(row, column, expect[0])
                     move = True
         return move
@@ -487,6 +482,15 @@ class Graph():
         return result
 
     def make_move(self, row, column):
+        '''
+        a method that try to color the node given
+        Parameters:
+            row: the row index (int)
+            column: the column index (int)
+        Returns:
+            True if move was available
+            False otherwise
+        '''
         nodes = nx.get_node_attributes(self._graph, 'node')
         node_id = column + self.columns * row
         palette = nodes[node_id].get_available_colors()
@@ -494,16 +498,27 @@ class Graph():
         move = False
         if number_colors != 0:
             if number_colors == 1:
-                print("Obvious Move:", node_id, " Colors:", palette)
+                self.log("Obvious Move: %d" % node_id)
                 move = True
-                nodes[node_id].set_color(palette[0])
+                self.set_node_color(row, column, palette[0])
             elif number_colors == 2:
-                print("Two Color Move:", node_id, " Colors:", palette)
+                self.log("Two Color Move: %d" % node_id)
                 move = self.two_color_move(node_id)
             elif number_colors == 3:
-                print("Three Color Move:", node_id, " Colors:", palette)
+                self.log("Three Color Move: %d" % node_id)
                 move = self.three_color_move(node_id)
         return move
+
+    def log(self, output):
+        '''
+        a method that logs the info
+        Parameters:
+            output: the output to log
+        Returns:
+            None
+        '''
+        if self.logging:
+            print(output)
 
 class Node():
     '''

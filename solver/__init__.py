@@ -40,6 +40,7 @@ class Solver():
                 row += 1
         if not loaded:
             raise Exception("Did not load file")
+        return loaded
 
     def is_int(self, number):
         '''
@@ -66,14 +67,15 @@ class Solver():
             True if finished
             False if ran out of moves
         '''
+        self.graph.logging = True
         done = False
         iterations = -1
         while not done:
             iterations += 1
-            if iterations > 10:
-                break
+            print("-----------------------------")
             print("Iteration:", iterations)
             self.graph.output()
+            print("-----------------------------")
             done = True
             # look at each node
             for row in range(0, self.n):
