@@ -67,7 +67,6 @@ class Solver():
             True if finished
             False if ran out of moves
         '''
-        self.graph.logging = True
         done = False
         iterations = -1
         while not done:
@@ -83,6 +82,11 @@ class Solver():
                     move = self.graph.make_move(row, column)
                     if move:
                         done = False
+#                     print("-----------------")
+#                     self.graph.output()
+#                     print("-----------------")
+            if iterations > 1:
+                break
         return
 
 
@@ -149,3 +153,13 @@ class Test(unittest.TestCase):
         result = self.solver.graph.to_list()
         self.solver.graph.output()
         print(result)
+        expect = [[1, 8, 0, 5, 7, 4, 6, 2, 3],
+                  [2, 6, 7, 3, 0, 1, 4, 8, 5],
+                  [5, 3, 4, 8, 2, 6, 1, 0, 7],
+                  [7, 2, 3, 1, 4, 0, 8, 5, 6],
+                  [8, 4, 1, 6, 3, 5, 0, 7, 2],
+                  [6, 0, 5, 7, 8, 2, 3, 1, 4],
+                  [0, 5, 6, 2, 1, 3, 7, 4, 8],
+                  [3, 1, 8, 4, 5, 7, 2, 6, 0],
+                  [4, 7, 2, 0, 6, 8, 5, 3, 1]]
+        self.assertEqual(result, expect)

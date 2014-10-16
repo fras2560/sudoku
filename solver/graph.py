@@ -190,88 +190,8 @@ class Graph():
             row += 1
         return result
 
-    def get_row_colors(self, row ,column):
-        '''
-        a method that gets all the row's available except for the node given
-        Parameters:
-            row: the row index
-            column: the node index
-        Returns:
-            list: of avialble colors for that row
-        '''
-        node_id = column + self.columns * row
-        available = []
-        nodes = nx.get_node_attributes(self._graph, 'node')
-        for c in filter(lambda x: x != column, range(0, self.columns)):
-            for color in nodes[c + self.columns * row].get_available_colors():
-                if color not in available:
-                    available.append(color)
-        return available 
-
-    def get_column_colors(self, row, column):
-        '''
-        a method that gets all the column's available except for the node given
-        Parameters:
-            row: the row index
-            column: the node index
-        Returns:
-            list: of avialble colors for that column
-        '''
-        node_id = column + self.columns * row
-        available = []
-        nodes = nx.get_node_attributes(self._graph, 'node')
-        for r in filter(lambda x: x != column, range(0, self.rows)):
-            for color in nodes[column + self.columns * r].get_available_colors():
-                if color not in available:
-                    available.append(color)
-        return available
-
     def get_nodes(self):
         return self._graph.nodes()
-
-    def remove_naked_pair(self, row, column):
-        node_id = column + self.columns * row
-        nodes = nx.get_node_attributes(self._graph, 'node')
-        palette = nodes[node_id].get_available_colors()
-        naked_pair = None
-        if len(palette) == 2:
-            for neighbor in self._graph.neighbors(node_id):
-                if nodes[neighbor].get_available_colors() == palette:
-                    naked_pair = neighbor
-                    break
-        if naked_pair is not None:
-            print(naked_pair)
-            n_column = naked_pair % self.columns
-            n_row = (naked_pair - n_column) / self.columns
-            c1 = palette[1]
-            c2 = palette[0]
-            if n_row == row:
-                # share row
-                print("Row Naked Pair")
-                for c in (0, self.columns):
-                    n_id = n_row * self.columns + c
-                    nodes[n_id].remove_available_color(c1)
-                    nodes[n_id].remove_available_color(c2)
-            elif n_column == column:
-                # share square
-                print("Column Naked Pair", palette[1])
-                for r in range(0, self.rows):
-                    n_id = r * self.columns + column
-                    print(n_id)
-                    n = nodes[n_id]
-                    n.remove_available_color(c1)
-                    n.remove_available_color(c2)
-                    
-            else:
-                # share square
-                print("Square Naked Pair")
-                row = row - (row % 3)
-                column = column - (column % 3)
-                square = self.assemble_square(row, column)
-                for node in square:
-                    nodes[node].remove_available_color(c1)
-                    nodes[node].remove_available_color(c2)
-        return naked_pair
 
     def same_square(self, c1,c2,r1,r2):
         '''
@@ -291,12 +211,20 @@ class Graph():
         return same
  
     def two_color_move(self, node_id):
+        '''
+        a method to use to make a move on a cell that only has two colors
+        Parameters:
+            node_id: the node identifier (int)
+        Returns:
+            move: True if able to make a move
+                  False otherwise
+        '''
         column = node_id % self.columns
         row = int((node_id - column) / self.columns)
         nodes = nx.get_node_attributes(self._graph, 'node')
         palette = nodes[node_id].get_available_colors()
         move = False
-        square = []
+        square_colors = []
         row_colors = []
         column_colors = []
         naked_pair = None
@@ -304,16 +232,17 @@ class Graph():
             n_palette = nodes[neighbor].get_available_colors()
             if n_palette == palette:
                 naked_pair = neighbor
-            else:
-                n_column = neighbor % self.columns
-                n_row = int((neighbor - column) / self.columns)
-                if column == n_column:
-                    column_colors += n_palette
-                elif row == n_row:
-                    row_colors += n_palette
-                if self.same_square(n_column, column, n_row, row):
-                    # must be in same square
-                    square += n_palette
+            self.log("Neighbor: %d" % neighbor)
+            self.log(n_palette)
+            n_column = neighbor % self.columns
+            n_row = int((neighbor - column) / self.columns)
+            if column == n_column:
+                column_colors += n_palette
+            elif row == n_row:
+                row_colors += n_palette
+            if self.same_square(n_column, column, n_row, row):
+                # must be in same square
+                square_colors += n_palette
         if naked_pair is not None:
             # found a naked pair
             move = True
@@ -324,32 +253,29 @@ class Graph():
             pair = [naked_pair, node_id]
             if n_row == row:
                 # share row
-                for c in (0, self.columns):
+                for c in range(0, self.columns):
                     n_id = n_row * self.columns + c
                     if n_id not in pair:
                         nodes[n_id].remove_available_color(c1)
                         nodes[n_id].remove_available_color(c2)
             elif n_column == column:
-                # share square
+                # share column
                 for r in range(0, self.rows):
                     n_id = r * self.columns + column
                     if n_id not in pair:
                         n = nodes[n_id]
                         n.remove_available_color(c1)
                         n.remove_available_color(c2)
-                    
-            else:
+            if self.same_square(column, n_column, n_row,row):
                 # share square
-                square = self.assemble_square(row, column)
+                r = row - (row % 3)
+                c = column - (column % 3)
+                square = self.assemble_square(r, c)
                 for node in square:
                     if node not in pair:
                         nodes[node].remove_available_color(c1)
                         nodes[node].remove_available_color(c2)
         expect = self.a_not_in_b(palette, row_colors)
-        
-        self.log("Node ID: %d " %node_id)
-        self.log(palette)
-        
         if len(expect) == 1:
             self.log("Row Move:(%d,%d)" %(row,column))
             self.set_node_color(row, column, expect[0])
@@ -361,7 +287,7 @@ class Graph():
                 self.set_node_color(row, column, expect[0])
                 move = True
             else:
-                expect = self.a_not_in_b(palette, square)
+                expect = self.a_not_in_b(palette, square_colors)
                 if len(expect) == 1:
                     self.log("Square Move:(%d,%d)" %(row,column))
                     self.set_node_color(row, column, expect[0])
@@ -369,12 +295,20 @@ class Graph():
         return move
 
     def three_color_move(self, node_id):
+        '''
+        a method that makes a move if the cell has three colors
+        Parameters:
+            node_id: the node identifier (int)
+        Returns:
+            move: True move was made
+                  False otherwise
+        '''
         column = node_id % self.columns
         row = int((node_id - column) / self.columns)
         nodes = nx.get_node_attributes(self._graph, 'node')
         palette = nodes[node_id].get_available_colors()
         move = False
-        square = []
+        square_colors = []
         row_colors = []
         column_colors = []
         naked_row = []
@@ -385,41 +319,53 @@ class Graph():
             n_palette = nodes[neighbor].get_available_colors()
             n_column = neighbor % self.columns
             n_row = int((neighbor - column) / self.columns)
-            if n_palette == palette:
-                
-                if column == n_column:
-                    naked_row.append(neighbor)
-                    naked_trio = naked_row
-                elif row == n_row:
-                    naked_column.append(neighbor)
-                    naked_trio = naked_column
-                else:
+            self.log(neighbor)
+            self.log(n_palette)
+            if column == n_column:
+                column_colors += n_palette
+                naked_trio = naked_column
+            elif row == n_row:
+                row_colors += n_palette
+                naked_trio = naked_row
+            if self.same_square(column, n_column, row, n_row):
+                self.log("Same Square")
+                square_colors += n_palette
+                if n_palette == palette:
                     naked_square.append(neighbor)
-                    naked_trio = naked_square
+                    if len(naked_square) == 2:
+                        move = True
+            if n_palette == palette:
+                naked_trio.append(neighbor)
                 if len(naked_trio) == 2:
                     move = True
-                    break
-            else:
-                if column == n_column:
-                    column_colors += n_palette
-                elif row == n_row:
-                    row_colors += n_palette
-                else:
-                    # must be in same square
-                    square += n_palette
         if move:
             # found a naked trio
             move = True
-            n_column = naked_trio[0] % self.columns
-            n_row = (naked_trio[0] - n_column) / self.columns
             c1 = palette[1]
             c2 = palette[0]
             c3 = palette[2]
+            if len(naked_square) == 2:
+                naked_trio = naked_square
+                # share square
+                naked_square.append(node_id)
+                self.log("Naked Trio Share Square")
+                self.log(naked_square)
+                r = row - (row % 3)
+                c = column - (column % 3)
+                square = self.assemble_square(r, c)
+                for node in square:
+                    if node not in naked_square: 
+                        nodes[node].remove_available_color(c1)
+                        nodes[node].remove_available_color(c2)
+                        nodes[node].remove_available_color(c3)
+            n_column = naked_trio[0] % self.columns
+            n_row = (naked_trio[0] - n_column) / self.columns
             if len(naked_row) == 2:
                 # share row
                 naked_row.append(node_id)
-                print("Row Naked Trio:", naked_row, "Colors:", palette )
-                for c in (0, self.columns):
+                self.log("Naked Trio Share Row")
+                self.log(naked_row)
+                for c in range(0, self.columns):
                     n_id = n_row * self.columns + c
                     if n_id not in naked_row:
                         nodes[n_id].remove_available_color(c1)
@@ -428,43 +374,37 @@ class Graph():
             elif len(naked_column) == 2:
                 # share square
                 naked_column.append(node_id)
-                print("Column Naked Trio", naked_column, "Colors:", palette)
+                self.log("Naked Trio Share Column")
+                self.log(naked_column)
                 for r in range(0, self.rows):
                     n_id = r * self.columns + column
-                    print(n_id)
+                    self.log(n_id)
                     if n_id not in naked_column:
                         n = nodes[n_id]
                         n.remove_available_color(c1)
                         n.remove_available_color(c2)
-                    
-            else:
-                # share square
-                naked_square.append(node_id)
-                print("Square Naked Pair:", naked_square, "Colors:", palette)
-                row = row - (row % 3)
-                column = column - (column % 3)
-                square = self.assemble_square(row, column)
-                for node in square:
-                    if node not in naked_square: 
-                        nodes[node].remove_available_color(c1)
-                        nodes[node].remove_available_color(c2)
-                        nodes[node].remove_available_color(c3)
-        print(node_id, ": Row Colors", row_colors,
-              " column colors:", column_colors, ' square_colors:', square)
+                        n.remove_available_color(c3)
         expect = self.a_not_in_b(palette, row_colors)
         if len(expect) == 1:
+            self.log("Row Move:(%d,%d)" %(row,column))
             self.set_node_color(row, column, expect[0])
             move = True
         else:
             expect = self.a_not_in_b(palette, column_colors)
             if len(expect) == 1:
+                self.log("Column Move:(%d,%d)" %(row,column))
                 self.set_node_color(row, column, expect[0])
                 move = True
             else:
-                expect = self.a_not_in_b(palette, square)
+                expect = self.a_not_in_b(palette, square_colors)
+                self.log("Square Check")
+                self.log(expect)
+                self.log(square_colors)
                 if len(expect) == 1:
+                    self.log("Square Move:(%d,%d)" %(row,column))
                     self.set_node_color(row, column, expect[0])
                     move = True
+        return move
 
     def a_not_in_b(self, a, b):
         '''
@@ -496,6 +436,8 @@ class Graph():
         palette = nodes[node_id].get_available_colors()
         number_colors = len(palette)
         move = False
+        self.log("Node Id:%d" % node_id)
+        self.log(palette)
         if number_colors != 0:
             if number_colors == 1:
                 self.log("Obvious Move: %d" % node_id)
@@ -597,6 +539,294 @@ class Node():
 
 import unittest
 
+class ThreeColorTest(unittest.TestCase):
+    def setUp(self):
+        self.g = Graph(9)
+        # self.g.logging = True
+
+    def testNakedTrioMoveSquare(self):
+        column = 0
+        for r in range(3, self.g.rows):
+            self.g.set_node_color(r, column, r)
+        nodes = nx.get_node_attributes(self.g._graph, 'node')
+        move = self.g.three_color_move(0)
+        result = self.g.to_list()
+        expect = [[' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [3, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [4, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [5, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [6, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [7, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [8, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        expect_colors = [3, 4, 5, 6, 7, 8]
+        checks = [1,2, 10, 11, 19, 20]
+        for node in checks:
+            self.assertEqual(nodes[node].get_available_colors(), expect_colors)
+        self.assertEqual(move, True)
+        self.assertEqual(expect, result)
+
+    def testNakedTrioMoveColumn(self):
+        self.g.set_node_color(0,1, 2)
+        self.g.set_node_color(0,2, 3)
+        self.g.set_node_color(1,1, 4)
+        self.g.set_node_color(1,2, 5)
+        self.g.set_node_color(2,1, 7)
+        self.g.set_node_color(2,2, 8)
+        move = self.g.three_color_move(0)
+        result = self.g.to_list()
+        expect = [[' ', 2, 3, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', 4, 5, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', 7, 8, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        self.assertEqual(result, expect)
+        self.assertEqual(move, True)
+        checks = [27, 36, 45, 54, 63, 72]
+        nodes = nx.get_node_attributes(self.g._graph, 'node')
+        expect_colors = [2, 3, 4, 5, 7, 8]
+        for node in checks:
+            self.assertEqual(expect_colors, nodes[node].get_available_colors())
+
+    def testNakedTrioMoveRow(self):
+        self.g.set_node_color(1,0, 2)
+        self.g.set_node_color(1,1, 4)
+        self.g.set_node_color(1,2, 5)
+        self.g.set_node_color(2,0, 6)
+        self.g.set_node_color(2,1, 7)
+        self.g.set_node_color(2,2, 8)
+        move = self.g.three_color_move(0)
+        result = self.g.to_list()
+        expect = [[' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [2, 4, 5, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [6, 7, 8, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+
+        self.assertEqual(result, expect)
+        self.assertEqual(move, True)
+        checks = [3, 4, 5, 6, 7, 8]
+        nodes = nx.get_node_attributes(self.g._graph, 'node')
+        expect_colors = [2, 4, 5, 6, 7, 8]
+        for node in checks:
+            self.assertEqual(expect_colors, nodes[node].get_available_colors())
+
+    def testColumnMove(self):
+        column = 0
+        for r in range(3, self.g.rows ):
+            self.g.set_node_color(r, column, r)
+        self.g.set_node_color(1 , self.g.columns - 1, 0)
+        self.g.set_node_color(2 , self.g.columns - 4, 0)
+        move = self.g.three_color_move(0)
+        self.assertEqual(move, True)
+        result = self.g.to_list()
+        expect = [[0, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 0],
+                  [' ', ' ', ' ', ' ', ' ', 0, ' ', ' ', ' '],
+                  [3, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [4, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [5, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [6, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [7, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [8, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        self.assertEqual(result, expect)
+
+    def testRowMove(self):
+        row = 0
+        for c in range(3, self.g.columns ):
+            self.g.set_node_color(row, c, c)
+        self.g.set_node_color(self.g.rows - 1 ,1 , 0)
+        self.g.set_node_color(self.g.rows - 4 ,2 , 0)
+        move = self.g.three_color_move(0)
+        result = self.g.to_list()
+        expect = [[0, ' ', ' ', 3, 4, 5, 6, 7, 8],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', 0, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', 0, ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        self.assertEqual(result, expect)
+        self.assertEqual(move, True)
+
+    def testSquareMove(self):
+        self.g.set_node_color(0,2,2)
+        self.g.set_node_color(1,0,3)
+        self.g.set_node_color(1,1,4)
+        self.g.set_node_color(1,2,5)
+        self.g.set_node_color(2,0,6)
+        self.g.set_node_color(2,1,7)
+        self.g.set_node_color(2, self.g.columns - 1, 0)
+        self.g.set_node_color(8,1,0)
+        move = self.g.three_color_move(0)
+        result = self.g.to_list()
+        expect = [[0, ' ', 2, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [3, 4, 5, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [6, 7, ' ', ' ', ' ', ' ', ' ', ' ', 0],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', 0, ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        self.assertEqual(result, expect)
+        self.assertEqual(move, True)
+
+class TwoColorTest(unittest.TestCase):
+    def setUp(self):
+        self.g = Graph(9)
+        #self.g.logging = True
+
+    def testNakedPairMoveSquare(self):
+        column = 0
+        for r in range(2, self.g.rows):
+            self.g.set_node_color(r, column, r)
+        nodes = nx.get_node_attributes(self.g._graph, 'node')
+        move = self.g.two_color_move(0)
+        result = self.g.to_list()
+        expect = [[' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [2, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [3, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [4, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [5, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [6, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [7, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [8, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        expect_colors = [3, 4, 5, 6, 7, 8]
+        checks = [1,2, 10, 11, 19, 20]
+        for node in checks:
+            self.assertEqual(nodes[node].get_available_colors(), expect_colors)
+        self.assertEqual(move, True)
+        self.assertEqual(expect, result)
+
+    def testNakedPairMoveColumn(self):
+        self.g.set_node_color(0,1, 2)
+        self.g.set_node_color(0,2, 3)
+        self.g.set_node_color(1,1, 4)
+        self.g.set_node_color(1,2, 5)
+        self.g.set_node_color(2,0, 6)
+        self.g.set_node_color(2,1, 7)
+        self.g.set_node_color(2,2, 8)
+        move = self.g.two_color_move(0)
+        result = self.g.to_list()
+        expect = [[' ', 2, 3, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', 4, 5, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [6, 7, 8, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        self.assertEqual(result, expect)
+        self.assertEqual(move, True)
+        checks = [27, 36, 45, 54, 63, 72]
+        nodes = nx.get_node_attributes(self.g._graph, 'node')
+        expect_colors = [2, 3, 4, 5, 7, 8]
+        for node in checks:
+            self.assertEqual(expect_colors, nodes[node].get_available_colors())
+
+    def testNakedPairMoveRow(self):
+        self.g.set_node_color(1,0, 2)
+        self.g.set_node_color(0,2, 3)
+        self.g.set_node_color(1,1, 4)
+        self.g.set_node_color(1,2, 5)
+        self.g.set_node_color(2,0, 6)
+        self.g.set_node_color(2,1, 7)
+        self.g.set_node_color(2,2, 8)
+        move = self.g.two_color_move(0)
+        result = self.g.to_list()
+        expect = [[' ', ' ', 3, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [2, 4, 5, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [6, 7, 8, ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        self.assertEqual(result, expect)
+        self.assertEqual(move, True)
+        checks = [3, 4, 5, 6, 7, 8]
+        nodes = nx.get_node_attributes(self.g._graph, 'node')
+        expect_colors = [2, 4, 5, 6, 7, 8]
+        for node in checks:
+            self.assertEqual(expect_colors, nodes[node].get_available_colors())
+
+    def testColumnMove(self):
+        column = 0
+        for r in range(2, self.g.rows ):
+            self.g.set_node_color(r, column, r)
+        self.g.set_node_color(1 , self.g.columns - 1, 0)
+        move = self.g.two_color_move(0)
+        self.assertEqual(move, True)
+        result = self.g.to_list()
+        expect = [[0, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 0],
+                  [2, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [3, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [4, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [5, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [6, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [7, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [8, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        self.assertEqual(result, expect)
+
+    def testRowMove(self):
+        row = 0
+        for c in range(2, self.g.columns ):
+            self.g.set_node_color(row, c, c)
+        self.g.set_node_color(self.g.rows - 1 ,1 , 0)
+        move = self.g.two_color_move(0)
+        self.assertEqual(move, True)
+        result = self.g.to_list()
+        expect = [[0, ' ', 2, 3, 4, 5, 6, 7, 8],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
+                  [' ', 0, ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        self.assertEqual(result, expect)
+
+    def testSquareMove(self):
+        self.g = Graph(9)
+        self.g.set_node_color(0,1,1)
+        self.g.set_node_color(0,2,2)
+        self.g.set_node_color(1,0,3)
+        self.g.set_node_color(1,1,4)
+        self.g.set_node_color(1,2,5)
+        self.g.set_node_color(2,0,6)
+        self.g.set_node_color(2,1,7)
+        self.g.set_node_color(2, self.g.columns - 1, 0)
+        move = self.g.two_color_move(0)
+        self.assertEqual(move, True)
+        result = self.g.to_list()
+        expect = [[0, 1, 2, ' ', ' ', ' ', ' ', ' ', ' '], 
+                  [3, 4, 5, ' ', ' ', ' ', ' ', ' ', ' '], 
+                  [6, 7, ' ', ' ', ' ', ' ', ' ', ' ', 0], 
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], 
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], 
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], 
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], 
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], 
+                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
+        self.assertEqual(result, expect)
+
 class GraphTest(unittest.TestCase):
 
     def setUp(self):
@@ -654,115 +884,11 @@ class GraphTest(unittest.TestCase):
         # no test need since called in constructor
         pass
 
-    def testGetRowColors(self):
-        result = self.g.get_row_colors(0, 0)
-        expect = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-        self.assertEqual(result, expect)
-        self.g.set_node_color(0, 0, 0)
-        result = self.g.get_row_colors(0, 0)
-        expect = [1, 2, 3, 4, 5, 6, 7, 8]
-        self.assertEqual(result, expect)
-
-    def testGetColumnColors(self):
-        result = self.g.get_column_colors(0, 0)
-        expect = [0, 1, 2, 3, 4, 5, 6, 7, 8]
-        self.assertEqual(result, expect)
-        self.g.set_node_color(1, 0, 0)
-        result = self.g.get_column_colors(0, 0)
-        expect = [1, 2, 3, 4, 5, 6, 7, 8]
-        self.assertEqual(result, expect)
-
-    def testRemoveNakePair(self):
-        self.g = Graph(9)
-        colors = [2,3,4,5,6,7,8]
-        column = 0
-        index = 0
-        for row in range(2, self.g.rows):
-            self.g.set_node_color(row, column, colors[index])
-            index += 1
-        result = self.g.remove_naked_pair(0, 0)
-        print(result)
-
     def testSameSquare(self):
         self.assertEqual(self.g.same_square(0, 4, 3, 4), False)
         self.assertEqual(self.g.same_square(0, 0, 3, 4), True)
         self.assertEqual(self.g.same_square(0, 0, 3, 4), True)
         self.assertEqual(self.g.same_square(0, 0, 0, 4), False)
-
-    def testTwpColorColumnNakePair(self):
-        self.g = Graph(9)
-        column = 0
-        for r in range(1, self.g.rows):
-            self.g.set_node_color(r, column, r)
-        self.g.set_node_color(1, 1, 1)
-        nodes = nx.get_node_attributes(self.g._graph, 'node')
-        palette = nodes[0].get_available_colors()
-        print(palette)
-        self.g.two_color_move(0)
-
-        result = self.g.to_list()
-        print(result)
-
-    def testTwoColorRowMove(self):
-        self.g = Graph(9)
-        column = 0
-        for r in range(2, self.g.rows ):
-            self.g.set_node_color(r, column, r)
-        self.g.set_node_color(1 , self.g.columns - 1, 0)
-        self.g.two_color_move(0)
-        result = self.g.to_list()
-        expect = [[0, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', 0],
-                  [2, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [3, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [4, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [5, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [6, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [7, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [8, ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
-        self.assertEqual(result, expect)
-
-    def testTwoColorColumnMove(self):
-        self.g = Graph(9)
-        row = 0
-        for c in range(2, self.g.columns ):
-            self.g.set_node_color(row, c, c)
-        self.g.set_node_color(self.g.rows - 1 ,1 , 0)
-        self.g.two_color_move(0)
-        result = self.g.to_list()
-        expect = [[0, ' ', 2, 3, 4, 5, 6, 7, 8],
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '],
-                  [' ', 0, ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
-        self.assertEqual(result, expect)
-
-    def testTwoColorSquareMove(self):
-        self.g = Graph(9)
-        self.g.set_node_color(0,1,1)
-        self.g.set_node_color(0,2,2)
-        self.g.set_node_color(1,0,3)
-        self.g.set_node_color(1,1,4)
-        self.g.set_node_color(1,2,5)
-        self.g.set_node_color(2,0,6)
-        self.g.set_node_color(2,1,7)
-        self.g.set_node_color(2, self.g.columns - 1, 0)
-        self.g.two_color_move(0)
-        result = self.g.to_list()
-        expect = [[0, 1, 2, ' ', ' ', ' ', ' ', ' ', ' '], 
-                  [3, 4, 5, ' ', ' ', ' ', ' ', ' ', ' '], 
-                  [6, 7, ' ', ' ', ' ', ' ', ' ', ' ', 0], 
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], 
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], 
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], 
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], 
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' '], 
-                  [' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ', ' ']]
-        self.assertEqual(result, expect)
 
     def testANotInB(self):
         l1 = [1, 2, 3]
