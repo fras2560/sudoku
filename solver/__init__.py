@@ -101,6 +101,8 @@ class Test(unittest.TestCase):
                                             "tests", 'test.txt'))
         self.test_files.append(os.path.join(self.test_directory,
                                             "tests", 'test2.txt'))
+        self.test_files.append(os.path.join(self.test_directory,
+                                            "tests", 'test3.txt'))
 
     def tearDown(self):
         pass
@@ -163,3 +165,25 @@ class Test(unittest.TestCase):
                   [3, 1, 8, 4, 5, 7, 2, 6, 0],
                   [4, 7, 2, 0, 6, 8, 5, 3, 1]]
         self.assertEqual(result, expect)
+
+    def testSolve3(self):
+        self.solver.load(self.test_files[2])
+        self.solver.solve()
+        result = self.solver.graph.to_list()
+        self.solver.graph.output()
+        print(result)
+        expect = [[0, 8, 6, 7, 5, 1, 2, 4, 3],
+                  [7, 2, 1, 6, 3, 4, 0, 5, 8],
+                  [4, 5, 3, 8, 0, 2, 1, 6, 7],
+                  [1, 7, 0, 3, 2, 5, 6, 8, 4],
+                  [5, 4, 8, 1, 7, 6, 3, 2, 0],
+                  [6, 3, 2, 4, 8, 0, 5, 7, 1],
+                  [3, 6, 5, 0, 4, 7, 8, 1, 2],
+                  [8, 1, 7, 2, 6, 3, 4, 0, 5],
+                  [2, 0, 4, 5, 1, 8, 7, 3, 6]]
+        for i1, row in enumerate(result):
+            for i2, column in enumerate(row):
+                if column != ' ':
+                    print(i1,i2)
+                    self.assertEqual(expect[i1][i2], column)
+
