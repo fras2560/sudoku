@@ -11,13 +11,14 @@ Version: 2014-10-07
 -------------------------------------------------------
 """
 import networkx as nx
+import logging
 
 class Graph():
     '''
     Graph
         a sudoku graph object
     '''
-    def __init__(self, n):
+    def __init__(self, n, logger=None):
         '''
         constructor
             constructs a sudoku graph (n by n)
@@ -47,7 +48,11 @@ class Graph():
                 for column in range(0, 9, 3):
                     node_list = self.assemble_square(row, column)
                     self.connect_node_list(node_list)
-        self.logging = False
+        if logger is None:
+            logging.basicConfig(level=logging.INFO,
+                            format='%(asctime)s %(message)s')
+            logger = logging.getLogger(__name__)
+        self.logger=logger
 
     def assemble_square(self, row, column):
         '''
@@ -120,6 +125,7 @@ class Graph():
             Exception: if color is already set or color is not an int
         '''
         node_id = column + self.columns * row
+        print(node_id)
         nodes = nx.get_node_attributes(self._graph, 'node')
         check = nodes[node_id].get_color()
         if check is not None:
@@ -164,6 +170,7 @@ class Graph():
                     line.append(" ")
                 index += 1
             print(", ".join(line))
+            self.logger.info(", ".join(line))
             line_end += self.columns
 
     def to_list(self):
@@ -191,6 +198,13 @@ class Graph():
         return result
 
     def get_nodes(self):
+        '''
+        a getter function for the Graphs' nodes
+        Parameters:
+            None
+        Returns:
+            a list of graph nodes (list)
+        '''
         return self._graph.nodes()
 
     def same_square(self, c1,c2,r1,r2):
@@ -232,8 +246,8 @@ class Graph():
             n_palette = nodes[neighbor].get_available_colors()
             if n_palette == palette:
                 naked_pair = neighbor
-            self.log("Neighbor: %d" % neighbor)
-            self.log(n_palette)
+            self.logger.debug("Neighbor: %d" % neighbor)
+            self.logger.debug(n_palette)
             n_column = neighbor % self.columns
             n_row = int((neighbor - column) / self.columns)
             if column == n_column:
@@ -277,19 +291,19 @@ class Graph():
                         nodes[node].remove_available_color(c2)
         expect = self.a_not_in_b(palette, row_colors)
         if len(expect) == 1:
-            self.log("Row Move:(%d,%d)" %(row,column))
+            self.logger.debug("Row Move:(%d,%d)" %(row,column))
             self.set_node_color(row, column, expect[0])
             move = True
         else:
             expect = self.a_not_in_b(palette, column_colors)
             if len(expect) == 1:
-                self.log("Column Move:(%d,%d)" %(row,column))
+                self.logger.debug("Column Move:(%d,%d)" %(row,column))
                 self.set_node_color(row, column, expect[0])
                 move = True
             else:
                 expect = self.a_not_in_b(palette, square_colors)
                 if len(expect) == 1:
-                    self.log("Square Move:(%d,%d)" %(row,column))
+                    self.logger.debug("Square Move:(%d,%d)" %(row,column))
                     self.set_node_color(row, column, expect[0])
                     move = True
         return move
@@ -319,8 +333,8 @@ class Graph():
             n_palette = nodes[neighbor].get_available_colors()
             n_column = neighbor % self.columns
             n_row = int((neighbor - column) / self.columns)
-            self.log(neighbor)
-            self.log(n_palette)
+            self.logger.debug(neighbor)
+            self.logger.debug(n_palette)
             if column == n_column:
                 column_colors += n_palette
                 naked_trio = naked_column
@@ -328,7 +342,7 @@ class Graph():
                 row_colors += n_palette
                 naked_trio = naked_row
             if self.same_square(column, n_column, row, n_row):
-                self.log("Same Square")
+                self.logger.debug("Same Square")
                 square_colors += n_palette
                 if n_palette == palette:
                     naked_square.append(neighbor)
@@ -348,8 +362,8 @@ class Graph():
                 naked_trio = naked_square
                 # share square
                 naked_square.append(node_id)
-                self.log("Naked Trio Share Square")
-                self.log(naked_square)
+                self.logger.debug("Naked Trio Share Square")
+                self.logger.debug(naked_square)
                 r = row - (row % 3)
                 c = column - (column % 3)
                 square = self.assemble_square(r, c)
@@ -363,8 +377,8 @@ class Graph():
             if len(naked_row) == 2:
                 # share row
                 naked_row.append(node_id)
-                self.log("Naked Trio Share Row")
-                self.log(naked_row)
+                self.logger.debug("Naked Trio Share Row")
+                self.logger.debug(naked_row)
                 for c in range(0, self.columns):
                     n_id = n_row * self.columns + c
                     if n_id not in naked_row:
@@ -374,11 +388,11 @@ class Graph():
             elif len(naked_column) == 2:
                 # share square
                 naked_column.append(node_id)
-                self.log("Naked Trio Share Column")
-                self.log(naked_column)
+                self.logger.debug("Naked Trio Share Column")
+                self.logger.debug(naked_column)
                 for r in range(0, self.rows):
                     n_id = r * self.columns + column
-                    self.log(n_id)
+                    self.logger.debug(n_id)
                     if n_id not in naked_column:
                         n = nodes[n_id]
                         n.remove_available_color(c1)
@@ -386,22 +400,22 @@ class Graph():
                         n.remove_available_color(c3)
         expect = self.a_not_in_b(palette, row_colors)
         if len(expect) == 1:
-            self.log("Row Move:(%d,%d)" %(row,column))
+            self.logger.debug("Row Move:(%d,%d)" %(row,column))
             self.set_node_color(row, column, expect[0])
             move = True
         else:
             expect = self.a_not_in_b(palette, column_colors)
             if len(expect) == 1:
-                self.log("Column Move:(%d,%d)" %(row,column))
+                self.logger.debug("Column Move:(%d,%d)" %(row,column))
                 self.set_node_color(row, column, expect[0])
                 move = True
             else:
                 expect = self.a_not_in_b(palette, square_colors)
-                self.log("Square Check")
-                self.log(expect)
-                self.log(square_colors)
+                self.logger.debug("Square Check")
+                self.logger.debug(expect)
+                self.logger.debug(square_colors)
                 if len(expect) == 1:
-                    self.log("Square Move:(%d,%d)" %(row,column))
+                    self.logger.debug("Square Move:(%d,%d)" %(row,column))
                     self.set_node_color(row, column, expect[0])
                     move = True
         return move
@@ -436,18 +450,16 @@ class Graph():
         palette = nodes[node_id].get_available_colors()
         number_colors = len(palette)
         move = False
-        self.log("Node Id:%d" % node_id)
-        self.log(palette)
         if number_colors != 0:
             if number_colors == 1:
-                self.log("Obvious Move: %d" % node_id)
+                self.logger.info("Obvious Move: %d" % node_id)
                 move = True
                 self.set_node_color(row, column, palette[0])
             elif number_colors == 2:
-                self.log("Two Color Move: %d" % node_id)
+                self.logger.info("Two Color Move: %d" % node_id)
                 move = self.two_color_move(node_id)
             elif number_colors == 3:
-                self.log("Three Color Move: %d" % node_id)
+                self.logger.info("Three Color Move: %d" % node_id)
                 move = self.three_color_move(node_id)
         return move
 
@@ -459,19 +471,51 @@ class Graph():
         Returns:
             None
         '''
-        if self.logging:
+        if self.logger.debugging:
             print(output)
+
+    def validate(self):
+        '''
+        a method that checks the coloring of the graph is valid
+        Parameters:
+            None
+        Returns:
+            True if valid
+            False otherse
+        '''
+        nodes = nx.get_node_attributes(self._graph, 'node')
+        valid = True
+        index = 0
+        while valid and index < len(nodes):
+            color = nodes[index].get_color()
+            if color is not None:
+                for neighbor in self._graph.neighbors(index):
+                    if nodes[neighbor].get_color() == color:
+                        self.logger.error('''
+                                            Invalid graph:
+                                            %d & %d have same color
+                                          '''
+                                          % (index, neighbor))
+                        valid = False
+                        break 
+            index += 1
+        return valid
 
 class Node():
     '''
     Node
         the nodes that make up a Graph
     '''
-    def __init__(self, row, column, size=9, color=None):
+    def __init__(self, row, column, size=9, color=None, logger=None):
         self._column = column
         self._row = row
         self._color = color
         self._available_colors = [x for x in range(size)]
+        if logger is None:
+            logging.basicConfig(level=logging.INFO,
+                            format='%(asctime)s %(message)s')
+            logger = logging.getLogger(__name__)
+        self.logger = logger
 
     def get_index(self):
         '''
@@ -495,6 +539,8 @@ class Node():
         '''
         if type(color) is int:
             self._color = color
+            self.logger.info("Setting Node(%d,%d) to Color %d" %
+                             (self._row, self._column, color))
             self._available_colors = []
         else:
             raise Exception("Node given non-int color")
@@ -529,6 +575,8 @@ class Node():
         '''
         index = len(self._available_colors)
         done = False
+        self.logger.debug("Removing color %d from node (%d, %d)"
+                          % (color, self._row, self._column))
         while index > 0 and not done:
             index -= 1
             if self._available_colors[index] == color:
@@ -541,8 +589,11 @@ import unittest
 
 class ThreeColorTest(unittest.TestCase):
     def setUp(self):
-        self.g = Graph(9)
-        # self.g.logging = True
+        logging.basicConfig(level=logging.INFO,
+                            format='%(asctime)s %(message)s')
+        self.logger = logging.getLogger(__name__)
+        self.g = Graph(9, logger=self.logger)
+        # self.g.logger.debugging = True
 
     def testNakedTrioMoveSquare(self):
         column = 0
@@ -685,8 +736,12 @@ class ThreeColorTest(unittest.TestCase):
 
 class TwoColorTest(unittest.TestCase):
     def setUp(self):
-        self.g = Graph(9)
-        #self.g.logging = True
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(message)s')
+        self.logger = logging.getLogger(__name__)
+        self.g = Graph(9, logger=self.logger)
+        self.logger = logging
+        #self.g.logger.debugging = True
 
     def testNakedPairMoveSquare(self):
         column = 0
@@ -804,7 +859,7 @@ class TwoColorTest(unittest.TestCase):
         self.assertEqual(result, expect)
 
     def testSquareMove(self):
-        self.g = Graph(9)
+        self.g = Graph(9, self.logger)
         self.g.set_node_color(0,1,1)
         self.g.set_node_color(0,2,2)
         self.g.set_node_color(1,0,3)
@@ -830,8 +885,11 @@ class TwoColorTest(unittest.TestCase):
 class GraphTest(unittest.TestCase):
 
     def setUp(self):
+        logging.basicConfig(level=logging.DEBUG,
+                            format='%(asctime)s %(message)s')
+        self.logger = logging.getLogger(__name__)
         self.n = 3
-        self.g = Graph(self.n)
+        self.g = Graph(self.n, logger=self.logger)
 
     def tearDown(self):
         pass
@@ -856,7 +914,6 @@ class GraphTest(unittest.TestCase):
         self.assertEqual(expect, available)
         
         # set one color
-        nodes = nx.get_node_attributes(self.g._graph,'node')
         self.g.set_node_color(0, 0, 0)
         available = self.g.get_available_colors(0, 1)
         expect =  [1, 2, 3, 4,  5, 6, 7, 8]
@@ -903,6 +960,14 @@ class GraphTest(unittest.TestCase):
         expect = []
         self.assertEqual(result, expect)
 
+    def testValidate(self):
+        self.g.set_node_color(0, 1, 0)
+        valid = self.g.validate()
+        self.assertEqual(valid, True, ' Valid Graph was said to not be valid')
+        self.g.set_node_color(0, 2, 0)
+        valid = self.g.validate()
+        self.assertEqual(valid, False, ' InValid Graph was said to be valid')
+        
 class NodeTest(unittest.TestCase):
 
     def setUp(self):
