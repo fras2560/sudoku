@@ -356,8 +356,8 @@ class Graph():
                 naked_trio = naked_square
                 # share square
                 naked_square.append(node_id)
-                self.logger.debug("Naked Trio Share Square")
-                self.logger.debug(naked_square)
+                self.logger.debug("Naked Trio Share Square: %s" %
+                                  (self.list_to_string(naked_square)))
                 r = row - (row % 3)
                 c = column - (column % 3)
                 square = self.assemble_square(r, c)
@@ -370,8 +370,8 @@ class Graph():
             if len(naked_row) == 2:
                 # share row
                 naked_row.append(node_id)
-                self.logger.debug("Naked Trio Share Row")
-                self.logger.debug(naked_row)
+                self.logger.debug("Naked Trio Share Row: %s" %
+                                  (self.list_to_string(naked_row)))
                 for c in range(0, self.columns):
                     n_id = self.get_node_id(n_row, c)
                     if n_id not in naked_row:
@@ -381,8 +381,8 @@ class Graph():
             elif len(naked_column) == 2:
                 # share square
                 naked_column.append(node_id)
-                self.logger.debug("Naked Trio Share Column")
-                self.logger.debug(naked_column)
+                self.logger.debug("Naked Trio Share Column: %s" %
+                                  (self.list_to_string(naked_square)))
                 for r in range(0, self.rows):
                     n_id = self.get_node_id(r, n_column)
                     self.logger.debug(n_id)
@@ -823,7 +823,6 @@ class TwoColorTest(unittest.TestCase):
         nodes = nx.get_node_attributes(self.g._graph, 'node')
         expect_colors = [2, 3, 4, 5, 7, 8]
         for node in checks:
-            print("(%d, %d)" % (self.g.get_row_column(node)))
             self.assertEqual(expect_colors, nodes[node].get_available_colors())
 
     def testNakedPairMoveRow(self):
@@ -851,7 +850,6 @@ class TwoColorTest(unittest.TestCase):
         nodes = nx.get_node_attributes(self.g._graph, 'node')
         expect_colors = [2, 4, 5, 6, 7, 8]
         for node in checks:
-            print("(%d, %d)" % (self.g.get_row_column(node)))
             self.assertEqual(expect_colors, nodes[node].get_available_colors())
 
     def testColumnMove(self):
