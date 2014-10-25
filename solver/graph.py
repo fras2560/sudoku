@@ -125,7 +125,6 @@ class Graph():
             Exception: if color is already set or color is not an int
         '''
         node_id = column + self.columns * row
-        print(node_id)
         nodes = nx.get_node_attributes(self._graph, 'node')
         check = nodes[node_id].get_color()
         if check is not None:
@@ -233,8 +232,7 @@ class Graph():
             move: True if able to make a move
                   False otherwise
         '''
-        column = node_id % self.columns
-        row = int((node_id - column) / self.columns)
+        row, column = self.get_row_column(node_id)
         nodes = nx.get_node_attributes(self._graph, 'node')
         palette = nodes[node_id].get_available_colors()
         move = False
@@ -244,12 +242,11 @@ class Graph():
         naked_pair = None
         for neighbor in self._graph.neighbors(node_id):
             n_palette = nodes[neighbor].get_available_colors()
+            n_row, n_column = self.get_row_column(neighbor)
             if n_palette == palette:
                 naked_pair = neighbor
-            self.logger.debug("Neighbor: %d" % neighbor)
-            self.logger.debug(n_palette)
-            n_column = neighbor % self.columns
-            n_row = int((neighbor - column) / self.columns)
+            self.logger.debug("(%d, %d)'s Palette - %s"
+                              %(n_row, n_column, self.list_to_string(n_palette)))
             if column == n_column:
                 column_colors += n_palette
             elif row == n_row:
@@ -260,22 +257,21 @@ class Graph():
         if naked_pair is not None:
             # found a naked pair
             move = True
-            n_column = naked_pair % self.columns
-            n_row = int((naked_pair - n_column) / self.columns)
+            n_row, n_column = self.get_row_column(naked_pair)
             c1 = palette[1]
             c2 = palette[0]
             pair = [naked_pair, node_id]
             if n_row == row:
                 # share row
                 for c in range(0, self.columns):
-                    n_id = n_row * self.columns + c
+                    n_id = self.get_node_id(row, c)
                     if n_id not in pair:
                         nodes[n_id].remove_available_color(c1)
                         nodes[n_id].remove_available_color(c2)
             elif n_column == column:
                 # share column
                 for r in range(0, self.rows):
-                    n_id = r * self.columns + column
+                    n_id = self.get_node_id(r, column)
                     if n_id not in pair:
                         n = nodes[n_id]
                         n.remove_available_color(c1)
@@ -317,8 +313,7 @@ class Graph():
             move: True move was made
                   False otherwise
         '''
-        column = node_id % self.columns
-        row = int((node_id - column) / self.columns)
+        row, column = self.get_row_column(node_id)
         nodes = nx.get_node_attributes(self._graph, 'node')
         palette = nodes[node_id].get_available_colors()
         move = False
@@ -331,10 +326,9 @@ class Graph():
         naked_trio = None
         for neighbor in self._graph.neighbors(node_id):
             n_palette = nodes[neighbor].get_available_colors()
-            n_column = neighbor % self.columns
-            n_row = int((neighbor - column) / self.columns)
-            self.logger.debug(neighbor)
-            self.logger.debug(n_palette)
+            n_row, n_column = self.get_row_column(neighbor)
+            self.logger.debug("(%d, %d)'s Palette - %s"
+                              %(n_row, n_column, self.list_to_string(n_palette)))
             if column == n_column:
                 column_colors += n_palette
                 naked_trio = naked_column
@@ -372,15 +366,14 @@ class Graph():
                         nodes[node].remove_available_color(c1)
                         nodes[node].remove_available_color(c2)
                         nodes[node].remove_available_color(c3)
-            n_column = naked_trio[0] % self.columns
-            n_row = (naked_trio[0] - n_column) / self.columns
+            n_row, n_column = self.get_row_column(naked_trio[0])
             if len(naked_row) == 2:
                 # share row
                 naked_row.append(node_id)
                 self.logger.debug("Naked Trio Share Row")
                 self.logger.debug(naked_row)
                 for c in range(0, self.columns):
-                    n_id = n_row * self.columns + c
+                    n_id = self.get_node_id(n_row, c)
                     if n_id not in naked_row:
                         nodes[n_id].remove_available_color(c1)
                         nodes[n_id].remove_available_color(c2)
@@ -391,7 +384,7 @@ class Graph():
                 self.logger.debug("Naked Trio Share Column")
                 self.logger.debug(naked_column)
                 for r in range(0, self.rows):
-                    n_id = r * self.columns + column
+                    n_id = self.get_node_id(r, n_column)
                     self.logger.debug(n_id)
                     if n_id not in naked_column:
                         n = nodes[n_id]
@@ -411,9 +404,6 @@ class Graph():
                 move = True
             else:
                 expect = self.a_not_in_b(palette, square_colors)
-                self.logger.debug("Square Check")
-                self.logger.debug(expect)
-                self.logger.debug(square_colors)
                 if len(expect) == 1:
                     self.logger.debug("Square Move:(%d,%d)" %(row,column))
                     self.set_node_color(row, column, expect[0])
@@ -446,20 +436,23 @@ class Graph():
             False otherwise
         '''
         nodes = nx.get_node_attributes(self._graph, 'node')
-        node_id = column + self.columns * row
+        node_id = self.get_node_id(row, column)
         palette = nodes[node_id].get_available_colors()
         number_colors = len(palette)
         move = False
         if number_colors != 0:
             if number_colors == 1:
-                self.logger.info("Obvious Move: %d" % node_id)
+                self.logger.info("Obvious Move: (%d, %d)"
+                                 % self.get_row_column(node_id))
                 move = True
                 self.set_node_color(row, column, palette[0])
             elif number_colors == 2:
-                self.logger.info("Two Color Move: %d" % node_id)
+                self.logger.info("Two Color Move: (%d, %d) "
+                                 % self.get_row_column(node_id))
                 move = self.two_color_move(node_id)
             elif number_colors == 3:
-                self.logger.info("Three Color Move: %d" % node_id)
+                self.logger.info("Three Color Move: (%d, %d)"
+                                 % self.get_row_column(node_id))
                 move = self.three_color_move(node_id)
         return move
 
@@ -491,16 +484,55 @@ class Graph():
             if color is not None:
                 for neighbor in self._graph.neighbors(index):
                     if nodes[neighbor].get_color() == color:
+                        r1,c1 = self.get_row_column(index)
+                        r2,c2 = self.get_row_column(neighbor)
                         self.logger.error('''
                                             Invalid graph:
-                                            %d & %d have same color
+                                            (%d, %d) & (%d, %d) have same color
                                           '''
-                                          % (index, neighbor))
+                                          % (r1, c1, r2, c2))
                         valid = False
                         break 
             index += 1
         return valid
 
+    def get_node_id(self, row, column):
+        '''
+        a method that finds the node id for the(row, column)
+        Parameters:
+            row: the row index (int)
+            column: the column index (int)
+        Returns:
+            node_id: the node id (int)
+        '''
+        node_id = column + self.columns * row
+        return node_id
+
+    def get_row_column(self, node_id):
+        '''
+        a method that finds the (row, column) from the node id
+        Parameters:
+            node_id: the node id
+        Returns:
+            (row, column): a tuple of the row and column (int)
+        '''
+        column = node_id % self.columns
+        row = int((node_id - column) / self.columns)
+        return (row, column)
+
+    def list_to_string(self, l):
+        '''
+        a method that takes a list turns into a string for printing
+        Parameters:
+            l: the list to convert
+        Returns:
+            : the resulting string (string)
+        '''
+        e = []
+        for element in l:
+            e.append(str(element))
+        return ",".join(e)
+ 
 class Node():
     '''
     Node
@@ -791,6 +823,7 @@ class TwoColorTest(unittest.TestCase):
         nodes = nx.get_node_attributes(self.g._graph, 'node')
         expect_colors = [2, 3, 4, 5, 7, 8]
         for node in checks:
+            print("(%d, %d)" % (self.g.get_row_column(node)))
             self.assertEqual(expect_colors, nodes[node].get_available_colors())
 
     def testNakedPairMoveRow(self):
@@ -818,6 +851,7 @@ class TwoColorTest(unittest.TestCase):
         nodes = nx.get_node_attributes(self.g._graph, 'node')
         expect_colors = [2, 4, 5, 6, 7, 8]
         for node in checks:
+            print("(%d, %d)" % (self.g.get_row_column(node)))
             self.assertEqual(expect_colors, nodes[node].get_available_colors())
 
     def testColumnMove(self):
@@ -967,7 +1001,23 @@ class GraphTest(unittest.TestCase):
         self.g.set_node_color(0, 2, 0)
         valid = self.g.validate()
         self.assertEqual(valid, False, ' InValid Graph was said to be valid')
-        
+
+    def testGetNodeId(self):
+        result = self.g.get_node_id(0, 0)
+        self.assertEqual(result, 0)
+        result = self.g.get_node_id(1, 0)
+        self.assertEqual(result, 3)
+        result = self.g.get_node_id(1, 1)
+        self.assertEqual(result, 4)
+
+    def testGetRowColumn(self):
+        result = self.g.get_row_column(0)
+        self.assertEqual(result, (0, 0))
+        result = self.g.get_row_column(3)
+        self.assertEqual(result, (1, 0))
+        result = self.g.get_row_column(4)
+        self.assertEqual(result, (1, 1))
+
 class NodeTest(unittest.TestCase):
 
     def setUp(self):
