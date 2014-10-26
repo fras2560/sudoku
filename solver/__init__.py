@@ -96,7 +96,7 @@ class Solver():
                             self.graph.output()
                             print()
                             done = False
-            if iterations > 1:
+            if iterations > 10:
                 break
         return
 
@@ -186,7 +186,6 @@ class Test(unittest.TestCase):
         for i1, row in enumerate(result):
             for i2, column in enumerate(row):
                 if column != ' ':
-                    print(i1,i2)
                     self.assertEqual(expect[i1][i2], column)
 
     def testSolve3(self):
@@ -209,6 +208,5 @@ class Test(unittest.TestCase):
         for i1, row in enumerate(result):
             for i2, column in enumerate(row):
                 if column != ' ':
-                    print(i1,i2)
                     self.assertEqual(expect[i1][i2], column)
 
